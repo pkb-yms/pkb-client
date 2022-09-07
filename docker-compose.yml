@@ -1,0 +1,64 @@
+version: "3.3"
+services:
+  client:
+    platform: linux/amd64
+    build:
+      context: client
+      dockerfile: Dockerfile
+    image: peekabook/client:latest
+    ports:
+      - "3000:3000"
+    networks:
+      - web-net
+    depends_on:
+      - server
+    volumes:
+      - ./client/src:/app/src
+  server:
+    platform: linux/amd64
+    build:
+      context: server
+      dockerfile: Dockerfile
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    image: peekabook/backend:latest
+    ports:
+      - "3001:3000"
+    stdin_open: true
+    tty: true
+    networks:
+      - db-net
+      - web-net
+    depends_on:
+      - db
+    volumes:
+      - ./server/src:/opt/src
+  db:
+    platform: linux/amd64
+    image: postgres
+    container_name: postgres
+    restart: always
+    secrets:
+      - db-password
+      - db-user
+      - db-name
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
+      - POSTGRES_USER_FILE=/run/secrets/db-user
+      - POSTGRES_DB_FILE=/run/secrets/db-name
+    networks:
+      - db-net
+networks:
+  db-net:
+  web-net:
+secrets:
+  db-password:
+    file: secrets/db-password.txt
+  db-user:
+    file: secrets/db-user.txt
+  db-name:
+    file: secrets/db-name.txt
